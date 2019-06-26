@@ -1,239 +1,218 @@
-#include <fstream>
 #include "struct.h" 
+#include <iostream>
+#include <fstream>
 using namespace std;
-namespace types {
 
-	// Ввод параметров игрового фильма из файла
-	game *InGame(game &g, ifstream &ifst) {
-		ifst >> g.name >> g.director;
-		return &g;
+//--------------------------------------------------
+
+//Ввод параметров игрового фильма из файла
+void game::InData(ifstream &ifst) {
+	ifst  >> name >> director;
+}
+
+//Вывод параметров игрового фильма в поток
+void game::Out(ofstream &ofst) {
+	ofst << "Это игровой фильм. " << " Название фильма: " << name
+		<< ", Режиссёр: " << director << endl;
+}
+
+//--------------------------------------------------
+
+//Ввод параметров мультфильма из потока
+void cartoon::InData(ifstream &ifst) {
+	ifst >>  name >> type;
+}
+
+//Вывод параметров мультфильма в поток
+void cartoon::Out(ofstream &ofst) {
+	ofst << "Это мультильм. " << " Название фильма: " << name << ", вид мультфильма: ";
+
+	if (type == 1) {
+		ofst << "рисованный" << endl;
 	}
-
-	// Вывод параметров игрового фильма в поток
-	void OutGame(game *g, ofstream &ofst) {
-		ofst << "Это игровой фильм. Название фильма: " << g->name
-			<< ", Режиссёр: " << g->director << endl;
+	if (type == 2) {
+		ofst << "кукольный" << endl;
 	}
+}
 
-	//--------------------------------------------------
 
-	// Ввод параметров мультфильма из потока
-	cartoon *InCartoon(cartoon &c, ifstream &ifst)
+//--------------------------------------------------
+
+//Ввод параметров обобщенного фильма из файла
+film* film::In(ifstream &ifst)
+{
+	film *fm;
+	int key;
+	ifst >> key;
+	switch (key)
 	{
-		ifst >> c.name >> c.type;
-		return &c;
-	}
-
-	// Вывод параметров мультфильма в поток
-	void OutCartoon(cartoon *c, ofstream &ofst)
+	case 1:
 	{
-		ofst << "Это мультильм. Название фильма: "
-			<< c->name << ", вид мультфильма: ";
-
-		if (c->type == 1) {
-			ofst << "рисованный" << endl;
-		}
-		if (c->type == 2) {
-			ofst << "кукольный" << endl;
-		}
-	}
-
-	void Out(film* f, ofstream& ofst) {
-		switch (f->key)
-		{
-		case 1:
-		{
-			OutGame((game*)f, ofst);
-		}break;
-		case 2:
-		{
-			OutCartoon((cartoon*)f, ofst);
-		}break;
-		default:
-		{
-			cout << "Некорректный фильм!" << endl;
-		}break;
-		}
-	}
-	//--------------------------------------------------
-
-	//Ввод параметров обобщенного фильма из файла
-	film *In(ifstream &ifst)
+		fm = new game;
+	}break;
+	case 2:
 	{
-		film *fm = new film;
-		int k;
-		ifst >> k;
-		if (k == 1) {
-			game *g = new game;
-			fm = (film*)InGame(*g, ifst);
-			fm->key = GAME;
-			return fm;
-		}
-		if (k == 2)
-		{
-			cartoon *c = new cartoon;
-			fm = (film*)InCartoon(*c, ifst);
-			fm->key = CARTOON;
-			return fm;
-		}
-		else 
-		{
-			return 0; 
-		}
+		fm = new cartoon;
+	}break;
+	default:
+	{
+		return 0;
+	}break;
 	}
 
-	//--------------------------------------------------
+	fm->InData(ifst);
+	return fm;
+}
 
-	//Добавление узла списка
-	int addlist(container &b, ifstream &ifst)
+//Инициализация контейнера
+container::container()
+{
+
+	Top = nullptr;
+	count = 0;
+}
+
+//Инициализация нового списка
+container::List::List()
+{
+	this->Next = nullptr;
+	this->Priv = nullptr;
+	this->data = nullptr;
+}
+
+//--------------------------------------------------
+
+//Добавление узла
+int container::add(ifstream &ifst)
+{
+	//Если контейнер пустой
+	if (count == 0)
 	{
-		//Если контейнер пустой
-		if (b.count == 0)
+		Top = new List;
+		if ((Top->data = film::In(ifst)) != 0)
+			return 1;
+		else
+			return 0;
+	}
+	//Если контейнер не пустой
+	else
+	{
+		List *current = Top;
+		for (int j = 0; j < count - 1; j++)
 		{
-			b.Top = new List;
-			if ((b.Top->data = In(ifst)) != 0)
-				return 1;
-			else
-				return 0;
-
+			current = current->Next;
+		}
+		current->Next = new List;
+		if ((current->Next->data = film::In(ifst)) != 0)
+		{
+			Top->Priv = current->Next;
+			current->Next->Priv = current;
+			current->Next->Next = Top;
+			return 1;
 		}
 		else
 		{
-			List *current = b.Top;
-			for (int j = 1; j < b.count; j++)
-			{
-				current = current->Next;
-			}
-			current->Next = new List;
-			if ((current->Next->data = In(ifst)) != 0)
-			{
-				b.Top->Priv = current->Next;
-				current->Next->Priv = current;
-				current->Next->Next = b.Top;
-				return 1;
-			}
-			else
-			{
-				return 0;
-			}
+			delete current->Next;
+			return 0;
 		}
 	}
-
-	// Инициализация контейнера
-	void Init(container &b) {
-		b.Top = nullptr;
-		b.count = 0;
-	}
-
-	// Очистка контейнера от элементов
-	void Clear(container &b) {
-		List* current = b.Top;
-		int i = 1;
-		while (i < b.count)
-		{
-			current = current->Next;
-			delete current->Priv;
-			i++;
-		}
-		delete current;
-		b.count = 0;
-	}
-
-	// Ввод содержимого контейнера из указанного потока
-	void In(container &b, ifstream &ifst) {
-		while (!ifst.eof()) {
-			if (addlist(b, ifst) != 0)
-				b.count++;
-		}
-	}
-
-	// Вывод содержимого контейнера в указанный поток
-	void Out(container &b, ofstream &ofst) {
-		List* current = b.Top;
-		ofst << "Контейнер содержит количество элементов равное: " << b.count << endl;
-		for (int j = 0; j < b.count; j++) {
-			ofst << j+1 << ": ";
-			Out(current->data, ofst);
-			current = current->Next;
-		}
-	}
-
-	//-----------------------------------------------------
-	// Мультиметод
-	void MultiMethod(container& c, ofstream& ofst) {
-		ofst << "Мультиметод." << endl;
-
-		List* currentfirst;
-		List* currentsecond;
-		int count = 1;
-
-		for (int i = 0; i < c.count - 1; i++)
-		{
-			currentfirst = c.Top;
-			currentsecond = c.Top;
-			currentsecond = currentsecond->Next;
-			for (int k = 0; k < i; k++)
-			{
-				currentfirst = currentfirst->Next;
-				currentsecond = currentsecond->Next;
-			}
-
-
-			for (int j = i + 1; j < c.count; j++)
-			{
-				switch (currentfirst->data->key)
-				{
-				case GAME:
-				{
-					switch (currentsecond->data->key)
-					{
-					case GAME:
-					{
-						ofst << "Игровой и игровой." << endl;
-					}break;
-					case CARTOON:
-					{
-						ofst << "Игровой и мультфильм." << endl;
-					}break;
-					default:
-					{
-						ofst << "Неизвестный вид." << endl;
-					}
-					}
-				}break;
-
-				case CARTOON:
-				{
-					switch (currentsecond->data->key)
-					{
-					case GAME:
-					{
-						ofst << "Мультфильм и игровой." << endl;
-					}break;
-					case CARTOON:
-					{
-						ofst << "Мультфильм и мультфильм." << endl;
-					}break;
-					default:
-					{
-						ofst << "Неизвестный вид." << endl;
-					}
-					}
-				}break;
-				default:
-				{
-					ofst << "Неизвестный вид." << endl;
-				}
-				}
-				ofst << count << ": ";
-				Out(currentfirst->data, ofst);
-				Out(currentsecond->data, ofst);
-				currentsecond = currentsecond->Next;
-				count++;
-			}
-
-			currentfirst = currentfirst->Next;
-		}
-	}
-
+	return 0;
 }
+
+//Удаление всех списков
+void container::List::Del()
+{
+	List* current = this;
+	while (current->Next != nullptr)
+	{
+		current = current->Next;
+		delete current->Priv;
+	}
+	delete current;
+}
+
+//Отчистка контейнера
+void container::Clear()
+{
+	List* current = Top;
+	for (int i = 1; i < count; i++)
+	{
+		current = current->Next;
+		delete current->Priv;
+	}
+	delete current;
+	count = 0;
+}
+
+// Ввод содержимого контейнера из указанного потока
+void container::In(ifstream &ifst)
+{
+	while (!ifst.eof()) {
+		if (add(ifst) != 0)
+			count++;
+	}
+}
+
+// Вывод содержимого контейнера в указанный поток
+void container::Out(ofstream & ofst)
+{
+	List* current = Top;
+	ofst << "Контейнер содержит количество элементов равное: " << count << endl;
+	for (int j = 0; j < count; j++)
+	{
+		ofst << j + 1 << ": ";
+		current->data->Out(ofst);
+		current = current->Next;
+	}
+}
+//-----------------------------------------------------
+
+//Мультиметод(Game)
+void game::MultiMethod(film* other,ofstream &ofst) {
+	other->MGame(ofst);
+}
+//Мультиметод(Cartoon)
+void cartoon::MultiMethod(film* other,ofstream &ofst) {
+	other->MCartoon(ofst);
+}
+// Вывод двух игровыых
+void game::MGame(ofstream& ofst) {
+	ofst << "Игровой и игровой." << endl;
+}
+//-----------------------------------------------------
+// Вывод треугольника и прямоугольника
+void cartoon::MCartoon(ofstream& ofst) {
+	ofst << "Мультфильм и игровой." << endl;
+}
+//-----------------------------------------------------
+// Вывод прямоугольника и треугольника
+void game::MCartoon(ofstream& ofst) {
+	ofst << "Игровой и мультфильм." << endl;
+}
+//-----------------------------------------------------
+// Вывод двух треугольников
+void cartoon::MGame(ofstream& ofst) {
+	ofst << "Мультфильм и мультфильм." << endl;
+}
+
+// Вызов мультиметода для элементов контейнера
+void container::MultiMethod(ofstream & ofst) {
+	ofst << "Мультиметод." << endl;
+	List* currentfirst = Top;
+	List* currentsecond = Top;
+	int c = 1;
+	for (int i = 0; i < count - 1; i++)
+	{
+		currentsecond = currentsecond->Next;
+		for (int j = i + 1; j < count; j++)
+		{
+			ofst << c << ": ";
+			currentfirst->data->MultiMethod(currentsecond->data, ofst);
+			currentfirst->data->Out(ofst);
+			currentsecond->data->Out(ofst);
+			currentsecond = currentsecond->Next;
+			c++;
+		}
+		currentfirst = currentfirst->Next;
+	}
+}
